@@ -174,3 +174,4 @@ export function renderStatusDashboard(data) {
 </body>
 </html>`;
 }
+
