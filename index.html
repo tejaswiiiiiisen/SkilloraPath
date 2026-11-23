@@ -2,6 +2,9 @@
 <html lang="en">
   <head>
     <script>
+      window.addEventListener('vite:preloadError', function(e) {
+        e.preventDefault();
+      });
       // Single Page Apps for GitHub Pages URL decode
       (function(l) {
         if (l.search[1] === '/' ) {
@@ -15,7 +18,7 @@
       }(window.location));
 
       (function() {
-        if (/^\/skillorapath/i.test(window.location.pathname)) {
+        if (/^\/skillorapath/i.test(window.location.pathname) || window.location.hostname.endsWith('github.io')) {
           var b = document.createElement('base');
           b.href = '/SkilloraPath/';
           document.head.appendChild(b);
