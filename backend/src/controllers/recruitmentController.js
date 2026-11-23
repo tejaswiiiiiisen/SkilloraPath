@@ -230,3 +230,32 @@ export async function updateApplicationStatus(req, res, next) {
     next(err);
   }
 }
+
+export async function uploadResume(req, res, next) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded.' });
+    }
+
+    const filename = req.file.filename;
+    const localUrl = `http://localhost:5000/uploads/resumes/${filename}`;
+
+    // Mirror to dashboard public folder for direct access
+    try {
+      const dashFile = path.resolve(`D:/dashborad/public/resumes/${filename}`);
+      const agnixFile = path.resolve(`D:/agnix/public/resumes/${filename}`);
+      fs.copyFileSync(req.file.path, dashFile);
+      fs.copyFileSync(req.file.path, agnixFile);
+    } catch (_) {}
+
+    res.json({
+      success: true,
+      message: 'Resume uploaded successfully to local storage & dashboard mirror',
+      filename,
+      url: localUrl,
+      public_url: `/resumes/${filename}`
+    });
+  } catch (err) {
+    next(err);
+  }
+}
