@@ -1,10 +1,23 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <base href="/SkilloraPath/">
     <script>
       window.addEventListener('vite:preloadError', function(e) {
         e.preventDefault();
       });
+      // Auto-fallback for any image that fails to load due to subpath
+      window.addEventListener('error', function(e) {
+        if (e.target && e.target.tagName === 'IMG') {
+          var src = e.target.getAttribute('src');
+          if (src && !src.includes('/SkilloraPath/') && !src.startsWith('data:') && !src.startsWith('blob:')) {
+            var clean = src.replace(/^(\.\/|\/)/, '');
+            e.target.src = '/SkilloraPath/' + clean;
+          } else if (src && src.startsWith('https://tejaswiiiiiisen.github.io/') && !src.includes('/SkilloraPath/')) {
+            e.target.src = src.replace('https://tejaswiiiiiisen.github.io/', 'https://tejaswiiiiiisen.github.io/SkilloraPath/');
+          }
+        }
+      }, true);
       // Single Page Apps for GitHub Pages URL decode
       (function(l) {
         if (l.search[1] === '/' ) {
@@ -16,14 +29,6 @@
           );
         }
       }(window.location));
-
-      (function() {
-        if (/^\/skillorapath/i.test(window.location.pathname) || window.location.hostname.endsWith('github.io')) {
-          var b = document.createElement('base');
-          b.href = '/SkilloraPath/';
-          document.head.appendChild(b);
-        }
-      })();
     </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="./assets/skillorapath-icon-Dj0GGPU1.png" />
