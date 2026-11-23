@@ -4,6 +4,9 @@
   "description": "SkilloraPath Enterprise API & Recruitment Backend",
   "type": "module",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js"
@@ -12,7 +15,7 @@
     "@supabase/supabase-js": "^2.49.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "ws": "^8.23.0"
   }
 }
-
