@@ -97,11 +97,13 @@ export default function App() {
 
       const handleStorage = () => {
         DataService.getApplications().then(setApplications);
+        DataService.getCandidates().then(setCandidates);
       };
       window.addEventListener('storage', handleStorage);
       const pollInterval = setInterval(() => {
         DataService.getApplications().then(setApplications);
-      }, 5000);
+        DataService.getCandidates().then(setCandidates);
+      }, 4000);
 
       return () => {
         supabase.removeChannel(channel);
@@ -165,36 +167,57 @@ export default function App() {
 
   // Enriched applications combined with candidate database records
   const enrichedApplications = useMemo(() => {
-    // If we have candidates master data, ensure every candidate appears
-    const baseList = candidates.length > 0 ? candidates : applications;
+    // Combine all applications first so newly applied candidates appear immediately at the top
+    const combined = [...applications];
+    for (const cand of candidates) {
+      const alreadyExists = combined.some(a => 
+        (a.id && cand.id && a.id === cand.id) ||
+        (a.email && cand.email && a.email.toLowerCase() === cand.email.toLowerCase()) ||
+        (cand.name && a.candidate_name && a.candidate_name.toLowerCase() === cand.name.toLowerCase())
+      );
+      if (!alreadyExists) {
+        combined.push(cand);
+      }
+    }
 
-    return baseList.map((item, index) => {
-      const matchApp = applications.find(a => a.candidate_id === item.id || a.candidate_id === item.candidate_id || a.candidate_name === item.name);
-      const matchJob = jobs.find(j => j.id === item.job_id || j.title === item.applied_for || j.id === matchApp?.job_id);
+    return combined.map((item, index) => {
+      const matchApp = applications.find(a => 
+        (a.id && item.id && a.id === item.id) ||
+        (a.candidate_id && item.candidate_id && a.candidate_id === item.candidate_id) ||
+        (a.email && item.email && a.email.toLowerCase() === item.email.toLowerCase()) ||
+        (a.candidate_name && item.name && a.candidate_name.toLowerCase() === item.name.toLowerCase())
+      );
+      const matchJob = jobs.find(j => 
+        (j.id && (j.id === item.job_id || j.id === matchApp?.job_id)) ||
+        (j.title && (j.title === item.applied_for || j.title === item.job_title || j.title === matchApp?.job_title))
+      );
 
-      const name = item.candidate_name || item.name || 'Candidate';
+      const name = item.candidate_name || item.name || matchApp?.candidate_name || 'Candidate';
       const cleanEmail = item.email || matchApp?.email || `${name.toLowerCase().replace(/\s+/g, '.')}@example.com`;
+      const stage = item.stage || item.status || matchApp?.stage || matchApp?.status || 'Applied';
 
       return {
-        id: item.id || `cand-${index + 101}`,
-        candidate_id: item.candidate_id || `AGX-CND-${index + 101}`,
+        id: item.id || matchApp?.id || `cand-${index + 101}`,
+        candidate_id: item.candidate_id || matchApp?.candidate_id || `AGX-CND-${index + 101}`,
         candidate_name: name,
         name: name,
         email: cleanEmail,
         phone: item.phone || matchApp?.phone || '+91 98290 77112',
-        college: item.college || 'Govt Engineering College, Ajmer',
-        qualification: item.qualification || 'B.Tech Computer Science',
-        current_year: item.current_year || '4th Year',
-        skills: item.skills || 'React, Node.js, TypeScript',
-        experience: item.experience || '6 Months Project Experience',
+        location: item.location || item.college || matchApp?.location || 'Remote',
+        college: item.college || item.location || matchApp?.location || 'Govt Engineering College, Ajmer',
+        qualification: item.qualification || item.experience || matchApp?.experience || 'Graduate / Fresher',
+        current_year: item.current_year || 'Final Year',
+        skills: item.skills || matchApp?.skills || 'React, Node.js, TypeScript',
+        experience: item.experience || matchApp?.experience || 'Fresher / Project Experience',
         resume_url: item.resume_url || matchApp?.resume_url || "https://cmpghiavghpdwtyuiuqm.supabase.co/storage/v1/object/public/employee-certs/emp_1782235485946340-MAC/CET/2025/01-1782277556872.pdf",
         job_id: matchJob?.id || item.job_id || matchApp?.job_id || 'job-001',
-        job_title: matchJob?.title || item.applied_for || matchApp?.job_title || 'Full Stack Developer Intern',
-        applied_for: matchJob?.title || item.applied_for || matchApp?.job_title || 'Full Stack Developer Intern',
+        job_title: matchJob?.title || item.job_title || item.position || item.applied_for || matchApp?.job_title || matchApp?.position || 'Full Stack Developer Intern',
+        applied_for: matchJob?.title || item.applied_for || item.job_title || item.position || matchApp?.job_title || matchApp?.position || 'Full Stack Developer Intern',
         department: matchJob?.department || item.department || matchApp?.department || 'Engineering',
-        applied_date: item.applied_date || matchApp?.applied_date || '2026-11-03',
-        status: matchApp?.status || item.status || 'Applied',
-        notes: item.hr_notes || matchApp?.hr_remarks || '',
+        applied_date: item.applied_date || matchApp?.applied_date || (item.created_at ? item.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)),
+        stage: stage,
+        status: stage,
+        notes: item.hr_notes || item.notes || matchApp?.hr_remarks || matchApp?.notes || '',
         profile_picture: item.profile_picture || matchCandAvatar(index)
       };
     });

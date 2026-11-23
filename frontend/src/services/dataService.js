@@ -975,10 +975,61 @@ export const DataService = {
 
   // CANDIDATES
   async getCandidates() {
-    const cached = getLocal(STORAGE_KEYS.CANDIDATES, null);
-    if (cached && cached.length > 0) return cached;
-    setLocal(STORAGE_KEYS.CANDIDATES, SEED_CANDIDATES);
-    return SEED_CANDIDATES;
+    let apps = [];
+    try {
+      const resp = await fetch('https://skillorapath-backend.onrender.com/api/recruitment/applications');
+      const json = await resp.json();
+      if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
+        apps = json.data;
+      }
+    } catch (_) {}
+
+    const cachedApps = getLocal(STORAGE_KEYS.APPLICATIONS, []);
+    if (Array.isArray(cachedApps)) {
+      for (const ca of cachedApps) {
+        if (!apps.find(a => a.id === ca.id)) apps.push(ca);
+      }
+    }
+
+    const cached = getLocal(STORAGE_KEYS.CANDIDATES, null) || SEED_CANDIDATES;
+    const combined = [...cached];
+
+    if (Array.isArray(apps)) {
+      for (const a of apps) {
+        const name = a.candidate_name || a.name;
+        const email = a.email;
+        if (!name && !email) continue;
+        const exists = combined.some(c => 
+          (c.id && a.id && c.id === a.id) ||
+          (c.email && email && c.email.toLowerCase() === email.toLowerCase()) ||
+          (c.name && name && c.name.toLowerCase() === name.toLowerCase())
+        );
+        if (!exists) {
+          combined.unshift({
+            id: a.id || 'cand_' + Date.now(),
+            candidate_id: a.candidate_id || `AGX-CND-${Math.floor(100 + Math.random() * 900)}`,
+            name: name,
+            candidate_name: name,
+            email: email,
+            phone: a.phone || '+91 98290 77112',
+            college: a.college || a.location || 'Remote',
+            qualification: a.qualification || a.experience || 'Graduate / Fresher',
+            current_year: a.current_year || 'Final Year',
+            skills: a.skills || 'React, Node.js, TypeScript',
+            experience: a.experience || 'Fresher / Project Experience',
+            resume_url: a.resume_url || '',
+            applied_for: a.job_title || a.position || a.applied_for || 'Full Stack Developer Intern',
+            applied_date: a.applied_date || (a.created_at ? a.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)),
+            status: a.stage || a.status || 'Applied',
+            stage: a.stage || a.status || 'Applied',
+            hr_notes: a.hr_remarks || a.notes || '',
+            profile_picture: a.profile_picture || '/review/client_1.webp'
+          });
+        }
+      }
+    }
+    setLocal(STORAGE_KEYS.CANDIDATES, combined);
+    return combined;
   },
 
   async saveCandidate(cand) {
