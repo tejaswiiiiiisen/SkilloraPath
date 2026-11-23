@@ -993,23 +993,48 @@ export const DataService = {
 
   // APPLICATIONS
   async getApplications() {
+    let remoteApps = [];
+    try {
+      const resp = await fetch('https://skillorapath-backend.onrender.com/api/recruitment/applications');
+      const json = await resp.json();
+      if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
+        remoteApps = json.data;
+      }
+    } catch (_) {}
+
     try {
       const { data, error } = await supabase.from('applications').select('*').order('created_at', { ascending: false });
-      if (!error && data && data.length > 0) {
-        setLocal(STORAGE_KEYS.APPLICATIONS, data);
-        return data;
+      if (!error && Array.isArray(data) && data.length > 0) {
+        for (const d of data) {
+          if (!remoteApps.find(r => r.id === d.id)) remoteApps.push(d);
+        }
       }
-    } catch (e) {}
-    const cached = getLocal(STORAGE_KEYS.APPLICATIONS, null);
-    if (cached && cached.length > 0) return cached;
-    setLocal(STORAGE_KEYS.APPLICATIONS, SEED_APPLICATIONS);
-    return SEED_APPLICATIONS;
+    } catch (_) {}
+
+    const cached = getLocal(STORAGE_KEYS.APPLICATIONS, []);
+    const merged = [...remoteApps];
+    if (Array.isArray(cached)) {
+      for (const c of cached) {
+        if (!merged.find(m => m.id === c.id)) {
+          merged.push(c);
+        }
+      }
+    }
+
+    for (const seed of SEED_APPLICATIONS) {
+      if (!merged.find(m => m.id === seed.id)) {
+        merged.push(seed);
+      }
+    }
+
+    setLocal(STORAGE_KEYS.APPLICATIONS, merged);
+    return merged;
   },
 
   async updateApplicationStatus(appId, status) {
     try { await supabase.from('applications').update({ status }).eq('id', appId); } catch (e) {}
     const current = await this.getApplications();
-    const updated = current.map(a => a.id === appId ? { ...a, status } : a);
+    const updated = current.map(a => a.id === appId ? { ...a, status, stage: status } : a);
     setLocal(STORAGE_KEYS.APPLICATIONS, updated);
     return updated;
   },
@@ -1017,10 +1042,26 @@ export const DataService = {
   async saveApplication(appData) {
     const saved = { ...appData };
     if (!saved.id) saved.id = 'app_' + Date.now();
+    if (!saved.status) saved.status = 'Applied';
+    if (!saved.stage) saved.stage = 'Applied';
+
     const current = await this.getApplications();
     const idx = current.findIndex(a => a.id === saved.id);
     const updated = idx >= 0 ? current.map(a => a.id === saved.id ? saved : a) : [saved, ...current];
     setLocal(STORAGE_KEYS.APPLICATIONS, updated);
+
+    try {
+      await fetch('https://skillorapath-backend.onrender.com/api/recruitment/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(saved)
+      });
+    } catch (_) {}
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('storage'));
+    }
+
     return saved;
   },
 

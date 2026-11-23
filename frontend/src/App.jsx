@@ -95,8 +95,18 @@ export default function App() {
         })
         .subscribe();
 
+      const handleStorage = () => {
+        DataService.getApplications().then(setApplications);
+      };
+      window.addEventListener('storage', handleStorage);
+      const pollInterval = setInterval(() => {
+        DataService.getApplications().then(setApplications);
+      }, 5000);
+
       return () => {
         supabase.removeChannel(channel);
+        window.removeEventListener('storage', handleStorage);
+        clearInterval(pollInterval);
       };
     } catch (e) {
       console.warn('Realtime subscription fallback:', e);
