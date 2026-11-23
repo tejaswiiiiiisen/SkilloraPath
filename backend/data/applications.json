@@ -20,8 +20,9 @@
     "portfolio_url": "",
     "position": "SOCIAL MEDIA & CONTENT CREATOR",
     "resume_url": "http://localhost:5000/uploads/resumes/1795425704563-151148155.pdf",
-    "stage": "Applied",
-    "status": "Applied"
+    "stage": "Interview",
+    "status": "Interview",
+    "updated_at": "2026-11-23T09:23:16.822Z"
   },
   {
     "id": "AGX-2026-7237",
@@ -69,8 +70,8 @@
     "portfolio_url": "",
     "position": "MERN Stack Developer Intern",
     "resume_url": "/resumes/sample-resume.pdf",
-    "stage": "Shortlisted",
-    "status": "Shortlisted",
-    "updated_at": "2026-11-23T08:50:54.490Z"
+    "stage": "Interview",
+    "status": "Interview",
+    "updated_at": "2026-11-23T09:24:52.581Z"
   }
 ]
