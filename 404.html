@@ -1,6 +1,15 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      (function() {
+        if (/^\/skillorapath/i.test(window.location.pathname)) {
+          var b = document.createElement('base');
+          b.href = '/SkilloraPath/';
+          document.head.appendChild(b);
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="./assets/skillorapath-icon-Dj0GGPU1.png" />
     <link rel="icon" type="image/svg+xml" href="./assets/logo-CkaNGu1q.svg" />
@@ -49,7 +58,7 @@
       }
     </style>
 
-    <script type="module" crossorigin src="./assets/index-v2.js"></script>
+    <script type="module" crossorigin src="./assets/index-v3.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-0X4NVUjq.css">
   </head>
   <body>
