@@ -49,3 +49,19 @@ export async function getApplicationsCollection() {
   }
   return null;
 }
+
+export async function getRecordsCollection() {
+  const database = await connectMongoDB();
+  if (database) {
+    return database.collection('records');
+  }
+  return null;
+}
+
+export async function getPortalCredentialsCollection() {
+  const database = await connectMongoDB();
+  if (database) {
+    return database.collection('portal_credentials');
+  }
+  return null;
+}

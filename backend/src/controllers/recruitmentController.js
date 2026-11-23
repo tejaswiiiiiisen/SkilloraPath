@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getApplicationsCollection, connectMongoDB } from '../config/mongodb.js';
+import { getApplicationsCollection, getRecordsCollection, getPortalCredentialsCollection, connectMongoDB } from '../config/mongodb.js';
 import { supabase } from '../config/supabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -172,6 +172,15 @@ export async function applyJob(req, res, next) {
 
 export async function getApplications(req, res, next) {
   try {
+    // Return in-memory/disk applications immediately for fast local response
+    if (inMemoryApplications && inMemoryApplications.length > 0) {
+      return res.json({
+        success: true,
+        source: 'InMemory',
+        count: inMemoryApplications.length,
+        data: inMemoryApplications
+      });
+    }
     // 1. Fetch from MongoDB Atlas
     try {
       const col = await getApplicationsCollection();
@@ -254,6 +263,183 @@ export async function uploadResume(req, res, next) {
       filename,
       url: localUrl,
       public_url: `/resumes/${filename}`
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getRecords(req, res, next) {
+  try {
+    let records = [];
+    try {
+      const col = await getRecordsCollection();
+      if (col) {
+        const docs = await col.find({}).sort({ completed_date: -1, created_at: -1 }).toArray();
+        if (docs && docs.length > 0) {
+          records = docs.map(({ _id, ...rest }) => rest);
+          return res.json({ success: true, source: 'MongoDB Atlas', count: records.length, data: records });
+        }
+      }
+    } catch (mErr) {
+      console.warn('[MongoDB Records] Query fallback:', mErr.message);
+    }
+
+    // Fallback to local records.json
+    try {
+      const recFile = path.resolve('D:/dashborad/public/data/records.json');
+      if (fs.existsSync(recFile)) {
+        records = JSON.parse(fs.readFileSync(recFile, 'utf-8'));
+      }
+    } catch (_) {}
+
+    res.json({ success: true, source: 'Local Cache', count: records.length, data: records });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function saveRecord(req, res, next) {
+  try {
+    const body = req.body || {};
+    const id = body.id || `rec-${Date.now()}`;
+    const record = {
+      ...body,
+      id,
+      created_at: body.created_at || new Date().toISOString()
+    };
+
+    // 1. Save to MongoDB Atlas collection 'records'
+    try {
+      const col = await getRecordsCollection();
+      if (col) {
+        await col.updateOne(
+          { $or: [{ id: record.id }, { intern_id: record.intern_id }] },
+          { $set: record },
+          { upsert: true }
+        );
+        console.log(`[MongoDB Atlas] Successfully saved certified intern record: ${record.name} (${record.intern_id})`);
+      }
+    } catch (mErr) {
+      console.warn('[MongoDB Atlas] Save record warning:', mErr.message);
+    }
+
+    // 2. Mirror to dashboard public folder for direct access
+    try {
+      const dashFile = path.resolve('D:/dashborad/public/data/records.json');
+      const agnixFile = path.resolve('D:/agnix/public/data/records.json');
+      fs.mkdirSync(path.dirname(dashFile), { recursive: true });
+      fs.mkdirSync(path.dirname(agnixFile), { recursive: true });
+
+      let current = [];
+      if (fs.existsSync(dashFile)) {
+        try { current = JSON.parse(fs.readFileSync(dashFile, 'utf-8')); } catch (_) {}
+      }
+      current = [record, ...current.filter(r => r.id !== id && r.intern_id !== record.intern_id)];
+      const json = JSON.stringify(current, null, 2);
+      fs.writeFileSync(dashFile, json, 'utf-8');
+      fs.writeFileSync(agnixFile, json, 'utf-8');
+    } catch (_) {}
+
+    res.status(201).json({
+      success: true,
+      message: 'Certified intern record saved to MongoDB Atlas & local database successfully!',
+      data: record
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PORTAL CREDENTIALS
+export async function getPortalCredentials(req, res, next) {
+  try {
+    let creds = [];
+    try {
+      const col = await getPortalCredentialsCollection();
+      if (col) {
+        const docs = await col.find({}).sort({ created_at: -1 }).toArray();
+        if (docs && docs.length > 0) {
+          creds = docs.map(({ _id, ...rest }) => rest);
+          return res.json({ success: true, source: 'MongoDB Atlas', collection: 'portal_credentials', count: creds.length, data: creds });
+        }
+      }
+    } catch (mErr) {
+      console.warn('[MongoDB Atlas Credentials] Fallback to disk:', mErr.message);
+    }
+
+    const credFile = path.resolve('D:/dashborad/public/data/portal_credentials.json');
+    if (fs.existsSync(credFile)) {
+      try { creds = JSON.parse(fs.readFileSync(credFile, 'utf-8')); } catch (_) {}
+    }
+
+    res.json({ success: true, source: 'Local Cache', collection: 'portal_credentials', count: creds.length, data: creds });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function savePortalCredential(req, res, next) {
+  try {
+    const body = req.body || {};
+    const username = body.username || body.portal_username;
+    const password = body.password || body.portal_password;
+
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: 'Username and password are required.' });
+    }
+
+    const id = body.id || `cred-${Date.now()}`;
+    const payload = {
+      id,
+      name: body.name || body.candidate_name || 'Intern',
+      email: body.email || '',
+      role: body.role || body.job_title || 'Intern',
+      intern_id: body.intern_id || body.candidate_id || id,
+      username,
+      password,
+      status: body.status || 'Active',
+      created_at: body.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    // 1. Upsert into MongoDB Atlas 'portal_credentials' collection
+    try {
+      const col = await getPortalCredentialsCollection();
+      if (col) {
+        await col.updateOne(
+          { $or: [{ username: payload.username }, { intern_id: payload.intern_id }, { id: payload.id }] },
+          { $set: payload },
+          { upsert: true }
+        );
+        console.log(`[MongoDB Atlas] Saved Portal Credentials for ${payload.name} (Username: ${payload.username})`);
+      }
+    } catch (mErr) {
+      console.warn('[MongoDB Atlas] Save credential warning:', mErr.message);
+    }
+
+    // 2. Mirror to dashboard public folder
+    try {
+      const dashFile = path.resolve('D:/dashborad/public/data/portal_credentials.json');
+      const agnixFile = path.resolve('D:/agnix/public/data/portal_credentials.json');
+      fs.mkdirSync(path.dirname(dashFile), { recursive: true });
+      fs.mkdirSync(path.dirname(agnixFile), { recursive: true });
+
+      let current = [];
+      if (fs.existsSync(dashFile)) {
+        try { current = JSON.parse(fs.readFileSync(dashFile, 'utf-8')); } catch (_) {}
+      }
+      current = [payload, ...current.filter(c => c.username !== username && c.intern_id !== payload.intern_id)];
+      const json = JSON.stringify(current, null, 2);
+      fs.writeFileSync(dashFile, json, 'utf-8');
+      fs.writeFileSync(agnixFile, json, 'utf-8');
+    } catch (_) {}
+
+    res.status(201).json({
+      success: true,
+      message: 'Portal credentials stored in MongoDB Atlas successfully!',
+      collection: 'portal_credentials',
+      data: payload
     });
   } catch (err) {
     next(err);

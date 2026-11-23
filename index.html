@@ -29,7 +29,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Faculty+Glyphic&family=IBM+Plex+Serif:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600;700;800&family=Pinyon+Script&family=Playfair+Display:ital,wght@0,700;1,400&family=Syne:wght@700;800&family=Turret+Road:wght@200;300;400;500;700;800&display=swap" rel="stylesheet">
     <title>SkilloraPath | AI Software Development Company</title>
     <meta name="description" content="SkilloraPath delivers AI software solutions, automation systems, and custom digital products." />
-    <script type="module" crossorigin src="./assets/index-CJjfnUDP.js?v=1795426200000"></script>
+    <script type="module" crossorigin src="./assets/index-CJjfnUDP.js?v=1795430000000"></script>
     <link rel="modulepreload" crossorigin href="./assets/rolldown-runtime-BCiCTKAo.js">
     <link rel="modulepreload" crossorigin href="./assets/vendor-globe-CHqBwe8E.js">
     <link rel="modulepreload" crossorigin href="./assets/vendor-react-CLSjwvyW.js">
@@ -74,13 +74,15 @@
   
     <script id="global-img-fallback">
       window.addEventListener('error', function(e) {
-        if (e.target && e.target.tagName === 'IMG') {
+        if (e.target && e.target.tagName === 'IMG' && !e.target.dataset.fallbackTried) {
+          e.target.dataset.fallbackTried = 'true';
           var src = e.target.getAttribute('src');
-          if (src && !src.includes('/SkilloraPath/') && !src.startsWith('data:') && !src.startsWith('blob:') && !src.startsWith('http')) {
-            var clean = src.replace(/^(\.\/|\/)/, '');
-            e.target.src = '/SkilloraPath/' + clean;
-          } else if (src && src.startsWith('https://tejaswiiiiiisen.github.io/') && !src.includes('/SkilloraPath/')) {
-            e.target.src = src.replace('https://tejaswiiiiiisen.github.io/', 'https://tejaswiiiiiisen.github.io/SkilloraPath/');
+          if (src) {
+            if (src.indexOf('/SkilloraPath/') !== -1) {
+              e.target.src = src.replace('/SkilloraPath/', '/');
+            } else if (!src.startsWith('data:') && !src.startsWith('blob:') && !src.startsWith('http')) {
+              e.target.src = '/SkilloraPath/' + src.replace(/^(./|/)/, '');
+            }
           }
         }
       }, true);
