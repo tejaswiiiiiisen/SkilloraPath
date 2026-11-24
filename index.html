@@ -112,7 +112,8 @@
             if (src.indexOf('/SkilloraPath/') !== -1) {
               e.target.src = src.replace('/SkilloraPath/', '/');
             } else if (!src.startsWith('data:') && !src.startsWith('blob:') && !src.startsWith('http')) {
-              e.target.src = '/SkilloraPath/' + src.replace(/^(./|/)/, '');
+              var cleanSrc = src.startsWith('./') ? src.slice(2) : (src.startsWith('/') ? src.slice(1) : src);
+              e.target.src = '/SkilloraPath/' + cleanSrc;
             }
           }
         }
