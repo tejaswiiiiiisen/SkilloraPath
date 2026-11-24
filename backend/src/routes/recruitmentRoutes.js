@@ -38,12 +38,15 @@ router.get('/jobs', getJobs);
 router.post('/apply', applyJob);
 router.get('/applications', getApplications);
 router.put('/applications/:id', updateApplicationStatus);
+router.post('/applications/:id', updateApplicationStatus);
 router.post('/applications/:id/status', updateApplicationStatus);
 router.post('/upload-resume', upload.single('resume'), uploadResume);
 router.get('/records', getRecords);
 router.post('/records', saveRecord);
 router.get('/portal-credentials', getPortalCredentials);
 router.post('/portal-credentials', savePortalCredential);
+router.get('/credentials', getPortalCredentials);
+router.post('/credentials', savePortalCredential);
 
 export default router;
 

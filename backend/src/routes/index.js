@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import recruitmentRoutes from './recruitmentRoutes.js';
 import leadsRoutes from './leadsRoutes.js';
+import internRoutes from './internRoutes.js';
 import { renderStatusDashboard } from '../views/statusDashboard.js';
 
 const router = Router();
@@ -22,5 +23,6 @@ router.get('/health', (req, res) => {
 
 router.use('/recruitment', recruitmentRoutes);
 router.use('/leads', leadsRoutes);
+router.use('/intern', internRoutes);
 
 export default router;

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getApplicationsCollection, getRecordsCollection, getPortalCredentialsCollection, connectMongoDB } from '../config/mongodb.js';
+import { getApplicationsCollection, getRecordsCollection, getPortalCredentialsCollection, getCredentialsCollection, connectMongoDB } from '../config/mongodb.js';
 import { supabase } from '../config/supabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -217,24 +217,32 @@ export async function getApplications(req, res, next) {
 export async function updateApplicationStatus(req, res, next) {
   try {
     const id = req.params.id;
-    const status = req.body?.status || 'Applied';
+    const { status, notes, hr_remarks, ...extra } = req.body || {};
+    const updateFields = { updated_at: new Date().toISOString() };
+    if (status) {
+      updateFields.status = status;
+      updateFields.stage = status;
+    }
+    if (notes !== undefined) updateFields.notes = notes;
+    if (hr_remarks !== undefined) updateFields.hr_remarks = hr_remarks;
+    Object.assign(updateFields, extra);
 
     // 1. Update in MongoDB Atlas
     try {
       const col = await getApplicationsCollection();
       if (col) {
-        await col.updateOne({ id }, { $set: { status, stage: status, updated_at: new Date().toISOString() } });
-        console.log(`[MongoDB] Updated application ${id} status to ${status} in MongoDB Atlas.`);
+        await col.updateOne({ id }, { $set: updateFields });
+        console.log(`[MongoDB Atlas] Updated candidate/application ${id} in MongoDB Atlas:`, updateFields);
       }
     } catch (mErr) {
       console.warn('[MongoDB] Update status warning:', mErr.message);
     }
 
     // 2. Update in memory & disk
-    inMemoryApplications = inMemoryApplications.map(a => (a.id === id ? { ...a, status, stage: status } : a));
+    inMemoryApplications = inMemoryApplications.map(a => (a.id === id ? { ...a, ...updateFields } : a));
     persistApplications();
 
-    res.json({ success: true, message: 'Application status updated in MongoDB Atlas', id, status });
+    res.json({ success: true, message: 'Application updated in MongoDB Atlas', id, ...updateFields });
   } catch (err) {
     next(err);
   }
@@ -356,24 +364,27 @@ export async function getPortalCredentials(req, res, next) {
   try {
     let creds = [];
     try {
-      const col = await getPortalCredentialsCollection();
+      const col = (await getCredentialsCollection()) || (await getPortalCredentialsCollection());
       if (col) {
         const docs = await col.find({}).sort({ created_at: -1 }).toArray();
         if (docs && docs.length > 0) {
           creds = docs.map(({ _id, ...rest }) => rest);
-          return res.json({ success: true, source: 'MongoDB Atlas', collection: 'portal_credentials', count: creds.length, data: creds });
+          return res.json({ success: true, source: 'MongoDB', collection: col.collectionName, count: creds.length, data: creds });
         }
       }
     } catch (mErr) {
-      console.warn('[MongoDB Atlas Credentials] Fallback to disk:', mErr.message);
+      console.warn('[MongoDB Credentials] Fallback to disk:', mErr.message);
     }
 
     const credFile = path.resolve('D:/dashborad/public/data/portal_credentials.json');
+    const localFile = path.resolve('D:/skillora/backend/data/portal_credentials.json');
     if (fs.existsSync(credFile)) {
       try { creds = JSON.parse(fs.readFileSync(credFile, 'utf-8')); } catch (_) {}
+    } else if (fs.existsSync(localFile)) {
+      try { creds = JSON.parse(fs.readFileSync(localFile, 'utf-8')); } catch (_) {}
     }
 
-    res.json({ success: true, source: 'Local Cache', collection: 'portal_credentials', count: creds.length, data: creds });
+    res.json({ success: true, source: 'Local Cache', collection: 'credentials', count: creds.length, data: creds });
   } catch (err) {
     next(err);
   }
@@ -395,50 +406,64 @@ export async function savePortalCredential(req, res, next) {
       name: body.name || body.candidate_name || 'Intern',
       email: body.email || '',
       role: body.role || body.job_title || 'Intern',
+      department: body.department || 'Engineering',
+      college: body.college || '',
       intern_id: body.intern_id || body.candidate_id || id,
       username,
       password,
       status: body.status || 'Active',
+      portal_url: body.portal_url || 'https://skillorapath.com/portal/login',
+      role_type: body.role_type || 'Intern',
       created_at: body.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
 
-    // 1. Upsert into MongoDB Atlas 'portal_credentials' collection
+    // 1. Upsert into MongoDB 'credentials' and 'portal_credentials' collections
     try {
-      const col = await getPortalCredentialsCollection();
-      if (col) {
-        await col.updateOne(
-          { $or: [{ username: payload.username }, { intern_id: payload.intern_id }, { id: payload.id }] },
-          { $set: payload },
-          { upsert: true }
-        );
-        console.log(`[MongoDB Atlas] Saved Portal Credentials for ${payload.name} (Username: ${payload.username})`);
+      const credCol = await getCredentialsCollection();
+      const portalCol = await getPortalCredentialsCollection();
+
+      const filter = { $or: [{ username: payload.username }, { intern_id: payload.intern_id }, { id: payload.id }] };
+      const update = { $set: payload };
+      const options = { upsert: true };
+
+      if (credCol) {
+        await credCol.updateOne(filter, update, options);
       }
+      if (portalCol) {
+        await portalCol.updateOne(filter, update, options);
+      }
+      console.log(`[MongoDB] Saved Credentials for ${payload.name} (Username: ${payload.username})`);
     } catch (mErr) {
-      console.warn('[MongoDB Atlas] Save credential warning:', mErr.message);
+      console.warn('[MongoDB] Save credential warning:', mErr.message);
     }
 
-    // 2. Mirror to dashboard public folder
+    // 2. Mirror to dashboard public folder and backend data
     try {
-      const dashFile = path.resolve('D:/dashborad/public/data/portal_credentials.json');
-      const agnixFile = path.resolve('D:/agnix/public/data/portal_credentials.json');
-      fs.mkdirSync(path.dirname(dashFile), { recursive: true });
-      fs.mkdirSync(path.dirname(agnixFile), { recursive: true });
+      const paths = [
+        path.resolve('D:/dashborad/public/data/portal_credentials.json'),
+        path.resolve('D:/agnix/public/data/portal_credentials.json'),
+        path.resolve('D:/skillora/backend/data/portal_credentials.json'),
+        path.resolve('D:/skillora/dashborad/public/data/portal_credentials.json')
+      ];
 
-      let current = [];
-      if (fs.existsSync(dashFile)) {
-        try { current = JSON.parse(fs.readFileSync(dashFile, 'utf-8')); } catch (_) {}
+      for (const p of paths) {
+        try {
+          fs.mkdirSync(path.dirname(p), { recursive: true });
+          let current = [];
+          if (fs.existsSync(p)) {
+            try { current = JSON.parse(fs.readFileSync(p, 'utf-8')); } catch (_) {}
+          }
+          current = [payload, ...current.filter(c => c.username !== username && c.intern_id !== payload.intern_id && c.id !== payload.id)];
+          fs.writeFileSync(p, JSON.stringify(current, null, 2), 'utf-8');
+        } catch (_) {}
       }
-      current = [payload, ...current.filter(c => c.username !== username && c.intern_id !== payload.intern_id)];
-      const json = JSON.stringify(current, null, 2);
-      fs.writeFileSync(dashFile, json, 'utf-8');
-      fs.writeFileSync(agnixFile, json, 'utf-8');
     } catch (_) {}
 
     res.status(201).json({
       success: true,
-      message: 'Portal credentials stored in MongoDB Atlas successfully!',
-      collection: 'portal_credentials',
+      message: 'Portal credentials stored in MongoDB successfully!',
+      collection: 'credentials',
       data: payload
     });
   } catch (err) {

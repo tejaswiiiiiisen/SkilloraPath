@@ -2,8 +2,8 @@ import { supabase } from '../lib/supabaseClient';
 
 const STORAGE_KEYS = {
   JOBS: 'skillorapath_admin_jobs_v5',
-  APPLICATIONS: 'skillorapath_admin_applications_v6',
-  CANDIDATES: 'skillorapath_admin_candidates_v5',
+  APPLICATIONS: 'skillorapath_admin_applications_v8',
+  CANDIDATES: 'skillorapath_admin_candidates_v8',
   EMPLOYEES: 'skillorapath_admin_employees_v5',
   INTERNS: 'skillorapath_admin_interns_v5',
   INTERVIEWS: 'skillorapath_admin_interviews_v5',
@@ -123,6 +123,66 @@ export const SEED_JOBS = [
 // Candidates Database
 export const SEED_CANDIDATES = [
   {
+    id: "cand-107",
+    candidate_id: "AGX-CND-107",
+    name: "Tejaswi Sen",
+    candidate_name: "Tejaswi Sen",
+    email: "tejaswisen26@gmail.com",
+    phone: "+91 82099 25051",
+    college: "Govt Engineering College, Ajmer",
+    qualification: "B.Tech Computer Science",
+    current_year: "Final Year",
+    skills: "React, Node.js, Express, MongoDB, TypeScript",
+    experience: "4 years",
+    resume_url: "/uploads/resumes/sample-resume.pdf",
+    applied_for: "MERN Stack Developer Intern",
+    applied_date: "2026-11-23",
+    status: "Applied",
+    stage: "Applied",
+    hr_notes: "Applied online through SkilloraPath Careers Registration Portal.",
+    profile_picture: "/review/client_1.webp"
+  },
+  {
+    id: "cand-108",
+    candidate_id: "AGX-CND-108",
+    name: "Harsh Vardhan",
+    candidate_name: "Harsh Vardhan",
+    email: "harsh.vardhan@example.com",
+    phone: "+91 98765 43210",
+    college: "Govt Engineering College, Ajmer",
+    qualification: "B.Tech CS",
+    current_year: "Final Year",
+    skills: "React, Node.js, Tailwind CSS",
+    experience: "1 Year Project Experience",
+    resume_url: "/uploads/resumes/sample-resume.pdf",
+    applied_for: "Full Stack Developer Intern",
+    applied_date: "2026-11-23",
+    status: "Applied",
+    stage: "Applied",
+    hr_notes: "Applied online through SkilloraPath Careers Registration Portal.",
+    profile_picture: "/review/client_2.webp"
+  },
+  {
+    id: "cand-109",
+    candidate_id: "AGX-CND-109",
+    name: "akshita brother",
+    candidate_name: "akshita brother",
+    email: "tejaswisen27@gmail.com",
+    phone: "+91 98290 77112",
+    college: "Rajasthan Technical University",
+    qualification: "B.Tech IT",
+    current_year: "Final Year",
+    skills: "Full Stack Development, JavaScript, Python",
+    experience: "Fresh Graduate",
+    resume_url: "/uploads/resumes/sample-resume.pdf",
+    applied_for: "Full Stack Developer Intern",
+    applied_date: "2026-11-23",
+    status: "Applied",
+    stage: "Applied",
+    hr_notes: "Applied online through SkilloraPath Careers Registration Portal.",
+    profile_picture: "/review/client_3.webp"
+  },
+  {
     id: "cand-101",
     candidate_id: "AGX-CND-101",
     name: "Raju Kumar",
@@ -216,6 +276,69 @@ export const SEED_CANDIDATES = [
 
 // Applications Pipeline (4 Clean Stages: Applied, Shortlisted, Interview, Selected)
 export const SEED_APPLICATIONS = [
+  {
+    id: "app-207",
+    candidate_id: "cand-107",
+    candidate_name: "Tejaswi Sen",
+    name: "Tejaswi Sen",
+    email: "tejaswisen26@gmail.com",
+    phone: "+91 82099 25051",
+    job_id: "job-001",
+    job_title: "MERN Stack Developer Intern",
+    position: "MERN Stack Developer Intern",
+    department: "Engineering",
+    applied_date: "2026-11-23",
+    status: "Applied",
+    stage: "Applied",
+    college: "Bombay / Remote",
+    qualification: "B.Tech Computer Science",
+    experience: "4 years",
+    skills: "React, Node.js, Express, MongoDB, TypeScript",
+    resume_url: "/uploads/resumes/sample-resume.pdf",
+    hr_remarks: "Applied online through SkilloraPath Careers Registration Portal."
+  },
+  {
+    id: "app-208",
+    candidate_id: "cand-108",
+    candidate_name: "Harsh Vardhan",
+    name: "Harsh Vardhan",
+    email: "harsh.vardhan@example.com",
+    phone: "+91 98765 43210",
+    job_id: "job-001",
+    job_title: "Full Stack Developer Intern",
+    position: "Full Stack Developer Intern",
+    department: "Engineering",
+    applied_date: "2026-11-23",
+    status: "Applied",
+    stage: "Applied",
+    college: "Govt Engineering College, Ajmer",
+    qualification: "B.Tech CS",
+    experience: "1 Year Project Experience",
+    skills: "React, Node.js, Tailwind CSS",
+    resume_url: "/uploads/resumes/sample-resume.pdf",
+    hr_remarks: "Applied online through SkilloraPath Careers Registration Portal."
+  },
+  {
+    id: "app-209",
+    candidate_id: "cand-109",
+    candidate_name: "akshita brother",
+    name: "akshita brother",
+    email: "tejaswisen27@gmail.com",
+    phone: "+91 98290 77112",
+    job_id: "job-001",
+    job_title: "Full Stack Developer Intern",
+    position: "Full Stack Developer Intern",
+    department: "Engineering",
+    applied_date: "2026-11-23",
+    status: "Applied",
+    stage: "Applied",
+    college: "Rajasthan Technical University",
+    qualification: "B.Tech IT",
+    experience: "Fresh Graduate",
+    skills: "JavaScript, Python, React",
+    resume_url: "/uploads/resumes/sample-resume.pdf",
+    hr_remarks: "Applied online through SkilloraPath Careers Registration Portal."
+  },
   {
     id: "app-201",
     candidate_id: "cand-101",
@@ -979,9 +1102,8 @@ export const DataService = {
     try {
       const resp = await fetch('https://skillorapath-backend.onrender.com/api/recruitment/applications');
       const json = await resp.json();
-      if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
-        apps = json.data;
-      }
+      const list = Array.isArray(json) ? json : (json?.data && Array.isArray(json.data) ? json.data : []);
+      if (list.length > 0) { apps = list; }
     } catch (_) {}
 
     const cachedApps = getLocal(STORAGE_KEYS.APPLICATIONS, []);
@@ -1048,9 +1170,8 @@ export const DataService = {
     try {
       const resp = await fetch('https://skillorapath-backend.onrender.com/api/recruitment/applications');
       const json = await resp.json();
-      if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
-        remoteApps = json.data;
-      }
+      const list = Array.isArray(json) ? json : (json?.data && Array.isArray(json.data) ? json.data : []);
+        if (list.length > 0) { remoteApps = list; }
     } catch (_) {}
 
     try {
