@@ -1,9 +1,8 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <base href="/SkilloraPath/">
     <script>
-      // Single Page Apps for GitHub Pages URL decode
+      // Single Page Apps for GitHub Pages URL decode & SPA link interception
       (function(l) {
         if (l.search && l.search[1] === '/' ) {
           var decoded = l.search.slice(1).split('&').map(function(s) { 
@@ -16,10 +15,42 @@
         }
       }(window.location));
 
+      // Global Navigation Link Interceptor for GitHub Pages
+      (function() {
+        window.addEventListener('click', function(e) {
+          var a = e.target.closest('a');
+          if (!a) return;
+          var href = a.getAttribute('href');
+          if (!href) return;
+          if (a.getAttribute('target') === '_blank' || a.hasAttribute('download')) return;
+          if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('#')) return;
+
+          var isGh = window.location.hostname.endsWith('github.io');
+          var currentPath = window.location.pathname;
+          var inRepo = isGh || /^\/skillorapath/i.test(currentPath);
+          var repoBase = '/SkilloraPath';
+
+          if (href.startsWith('/')) {
+            e.preventDefault();
+            var targetPath = href;
+            if (inRepo && !targetPath.toLowerCase().startsWith(repoBase.toLowerCase())) {
+              targetPath = repoBase + (targetPath === '/' ? '' : targetPath);
+            }
+            if (window.location.pathname !== targetPath) {
+              window.history.pushState({}, '', targetPath || '/');
+              window.dispatchEvent(new PopStateEvent('popstate'));
+              window.scrollTo(0, 0);
+            }
+          }
+        }, true);
+      })();
+
       window.addEventListener('vite:preloadError', function(e) {
         e.preventDefault();
       });
     </script>
+    <base href="/SkilloraPath/">
+    
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="./assets/skillorapath-icon-Dj0GGPU1.png" />
     <link rel="icon" type="image/svg+xml" href="/SkilloraPath/assets/logo.svg" />
